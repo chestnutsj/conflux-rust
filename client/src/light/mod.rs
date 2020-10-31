@@ -77,6 +77,7 @@ impl LightClient {
             network.clone(),
             conf.raw_conf.throttling_conf.clone(),
             notifications,
+            conf.light_node_config(),
         ));
         light.register().unwrap();
 
@@ -84,6 +85,8 @@ impl LightClient {
             conf.rpc_impl_config(),
             light.clone(),
             accounts,
+            consensus.clone(),
+            data_man.clone(),
         ));
         let debug_rpc_http_server = super::rpc::start_http(
             conf.local_http_config(),

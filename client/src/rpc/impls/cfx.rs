@@ -905,7 +905,16 @@ impl RpcImpl {
             ));
         }
         let response = EstimateGasAndCollateralResponse {
-            gas_used: executed.gas_used.into(),
+            // We multiply the gas_used for 2 reasons:
+            // 1. In each EVM call, the gas passed is at most 63/64 of the
+            // remaining gas, so the gas_limit should be multiplied a factor so
+            // that the gas passed into the sub-call is sufficient. The 4 / 3
+            // factor is sufficient for 18 level of calls.
+            // 2. In Conflux, we recommend setting the gas_limit to (gas_used *
+            // 4) / 3, because the extra gas will be refunded up to
+            // 1/4 of the gas limit.
+            gas_limit: executed.gas_used * 4 / 3,
+            gas_used: executed.gas_used,
             storage_collateralized: storage_collateralized.into(),
         };
         Ok(response)
@@ -1086,19 +1095,19 @@ impl Cfx for CfxHandler {
         to self.common {
             fn best_block_hash(&self) -> JsonRpcResult<H256>;
             fn block_by_epoch_number(
-                &self, epoch_num: EpochNumber, include_txs: bool) -> JsonRpcResult<Option<RpcBlock>>;
+                &self, epoch_num: EpochNumber, include_txs: bool) -> BoxFuture<Option<RpcBlock>>;
             fn block_by_hash_with_pivot_assumption(
                 &self, block_hash: H256, pivot_hash: H256, epoch_number: U64)
-                -> JsonRpcResult<RpcBlock>;
+                -> BoxFuture<RpcBlock>;
             fn block_by_hash(&self, hash: H256, include_txs: bool)
-                -> JsonRpcResult<Option<RpcBlock>>;
+                -> BoxFuture<Option<RpcBlock>>;
             fn confirmation_risk_by_hash(&self, block_hash: H256) -> JsonRpcResult<Option<U256>>;
             fn blocks_by_epoch(&self, num: EpochNumber) -> JsonRpcResult<Vec<H256>>;
             fn skipped_blocks_by_epoch(&self, num: EpochNumber) -> JsonRpcResult<Vec<H256>>;
             fn epoch_number(&self, epoch_num: Option<EpochNumber>) -> JsonRpcResult<U256>;
             fn gas_price(&self) -> JsonRpcResult<U256>;
             fn next_nonce(&self, address: H160, num: Option<BlockHashOrEpochNumber>)
-                -> JsonRpcResult<U256>;
+                -> BoxFuture<U256>;
             fn get_status(&self) -> JsonRpcResult<RpcStatus>;
             fn get_client_version(&self) -> JsonRpcResult<String>;
         }
