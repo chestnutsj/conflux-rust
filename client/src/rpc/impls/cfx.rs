@@ -882,7 +882,7 @@ impl RpcImpl {
             }
             ExecutionOutcome::Finished(executed) => executed,
         };
-        let mut storage_collateralized = 0;
+        let mut storage_collateralized = U64::from(0);
         for storage_change in &executed.storage_collateralized {
             storage_collateralized += storage_change.collaterals;
         }
@@ -915,7 +915,7 @@ impl RpcImpl {
             // 1/4 of the gas limit.
             gas_limit: executed.gas_used * 4 / 3,
             gas_used: executed.gas_used,
-            storage_collateralized: storage_collateralized.into(),
+            storage_collateralized,
         };
         Ok(response)
     }
@@ -1115,8 +1115,8 @@ impl Cfx for CfxHandler {
         to self.rpc_impl {
             fn code(&self, addr: H160, epoch_number: Option<EpochNumber>) -> BoxFuture<Bytes>;
             fn account(&self, address: H160, num: Option<EpochNumber>) -> BoxFuture<RpcAccount>;
-            fn interest_rate(&self, num: Option<EpochNumber>) -> JsonRpcResult<U256>;
-            fn accumulate_interest_rate(&self, num: Option<EpochNumber>) -> JsonRpcResult<U256>;
+            fn interest_rate(&self, num: Option<EpochNumber>) -> BoxFuture<U256>;
+            fn accumulate_interest_rate(&self, num: Option<EpochNumber>) -> BoxFuture<U256>;
             fn admin(&self, address: H160, num: Option<EpochNumber>)
                 -> BoxFuture<Option<H160>>;
             fn sponsor_info(&self, address: H160, num: Option<EpochNumber>)
