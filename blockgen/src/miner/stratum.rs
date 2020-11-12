@@ -70,14 +70,14 @@ struct SubmitPayload {
 
 impl SubmitPayload {
     fn from_args(payload: Vec<String>) -> Result<Self, PayloadError> {
-        if payload.len() != 4 or  {
+        if payload.len() != 4 {
             return Err(PayloadError::ArgumentsAmountUnexpected(payload.len()));
         }
 
         let worker_id = payload[0].clone();
 
-        let  mut  boundary:U256 = 0
-        if !payload[1].eq(payload[3]) {
+        let  mut  boundary:U256 = U256::zero()
+        if !payload[1].eq(&payload[3]) {
             boundary = match clean_0x(&payload[1]).parse::<U256>() {
                 Ok(nonce) => nonce,
                 Err(e) => {
@@ -166,8 +166,8 @@ impl JobDispatcher for StratumJobDispatcher {
                             ).into(),
                         ));
                     } else {
-                        if payload.boundary != 0 {
-                            let ret =   validate2(self.pow.clone(), pow_prob,&payload.boundary)
+                        if !payload.boundary.is_zero() {
+                            let ret =   validate2(self.pow.clone(), pow_prob, &sol,&payload.boundary)
                             match ret {
                                 1 => {
                                     solved_nonce.insert(sol.nonce);
