@@ -58,6 +58,22 @@ impl ProofOfWorkProblem {
         against_lower_bound_u256.lt(boundary)
             || boundary.eq(&ProofOfWorkProblem::NO_BOUNDARY)
     }
+
+    #[inline]
+    pub fn validate_hash_against_boundary2(
+        hash: &H256, nonce: &U256, boundary: &U256, diff : &U256
+    ) -> int {
+        let lower_bound = nonce_to_lower_bound(nonce);
+        let (against_lower_bound_u256, _) = BigEndianHash::into_uint(hash).overflowing_sub(lower_bound);
+        if  against_lower_bound_u256.lt(boundary) || boundary.eq(&ProofOfWorkProblem::NO_BOUNDARY) {
+           return 1
+        } 
+        if against_lower_bound_u256.lt(diff) {
+            return  2
+        }
+        return 0
+    }
+
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -308,6 +324,21 @@ pub fn validate(
         &hash,
         &nonce,
         &problem.boundary,
+    )
+}
+
+pub fn validate2(
+    pow: Arc<PowComputer>, problem: &ProofOfWorkProblem,
+    solution: &ProofOfWorkSolution, diff: &U256,
+) -> int
+{
+    let nonce = solution.nonce;
+    let hash = pow.compute(&nonce, &problem.block_hash, problem.block_height);
+    ProofOfWorkProblem::validate_hash_against_boundary2(
+        &hash,
+        &nonce,
+        &problem.boundary,
+        &diff ,
     )
 }
 

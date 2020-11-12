@@ -31,7 +31,7 @@ use cfx_stratum::{
 };
 use cfx_types::{H256, U256};
 use cfxcore::pow::{
-    validate, PowComputer, ProofOfWorkProblem, ProofOfWorkSolution,
+    validate, validate2,PowComputer, ProofOfWorkProblem, ProofOfWorkSolution,
 };
 use log::{info, trace, warn};
 use parking_lot::Mutex;
@@ -65,15 +65,28 @@ struct SubmitPayload {
     worker_id: String,
     nonce: U256,
     pow_hash: H256,
+    boundary: U256
 }
 
 impl SubmitPayload {
     fn from_args(payload: Vec<String>) -> Result<Self, PayloadError> {
-        if payload.len() != 4 {
+        if payload.len() != 4 or  {
             return Err(PayloadError::ArgumentsAmountUnexpected(payload.len()));
         }
 
         let worker_id = payload[0].clone();
+
+        let  mut  boundary:U256 = 0
+        if !payload[1].eq(payload[3]) {
+            boundary = match clean_0x(&payload[1]).parse::<U256>() {
+                Ok(nonce) => nonce,
+                Err(e) => {
+                    warn!(target: "stratum", "submit_work ({}): boundary ({:?})", &payload[1], e);
+                    return Err(PayloadError::InvalidPowHash(payload[1].clone()));
+                }
+            }; 
+        }
+
 
         let nonce = match clean_0x(&payload[2]).parse::<U256>() {
             Ok(nonce) => nonce,
@@ -91,10 +104,13 @@ impl SubmitPayload {
             }
         };
 
+
+
         Ok(SubmitPayload {
             worker_id,
             nonce,
             pow_hash,
+            boundary,
         })
     }
 }
@@ -127,9 +143,10 @@ impl JobDispatcher for StratumJobDispatcher {
 
         trace!(
             target: "stratum",
-            "submit_work: Decoded: nonce={}, pow_hash={}, worker_id={}",
+            "submit_work: Decoded: nonce={}, pow_hash={}, boundary={}, worker_id={}",
             payload.nonce,
             payload.pow_hash,
+            payload.boundary,
             payload.worker_id,
         );
 
@@ -148,21 +165,55 @@ impl JobDispatcher for StratumJobDispatcher {
                                 sol.nonce, payload.worker_id
                             ).into(),
                         ));
-                    } else if validate(self.pow.clone(), pow_prob, &sol) {
-                        solved_nonce.insert(sol.nonce);
-                        info!(
-                            "Stratum worker {} mined a block!",
-                            payload.worker_id
-                        );
-                        found = true;
                     } else {
-                        return Err(StratumServiceError::InvalidSolution(
-                            format!(
-                                "Incorrect Nonce! worker_id = {}!",
-                                payload.worker_id
-                            )
-                            .into(),
-                        ));
+                        if payload.boundary != 0 {
+                            let ret =   validate2(self.pow.clone(), pow_prob,&payload.boundary)
+                            match ret {
+                                1 => {
+                                    solved_nonce.insert(sol.nonce);
+                                    info!(
+                                        "Stratum worker {} mined a block!",
+                                        payload.worker_id
+                                    );
+                                    found = true;
+                                }
+                                2 => {
+                                    return Err(StratumServiceError::InvalidSolution(
+                                        format!(
+                                            "aaaaa"
+                                        )
+                                        .into(),
+                                    ));
+                                }
+                                _ => {
+                                    return Err(StratumServiceError::InvalidSolution(
+                                        format!(
+                                            "Incorrect Nonce! worker_id = {}!",
+                                            payload.worker_id
+                                        )
+                                        .into(),
+                                    ));
+                                }
+                            }
+                           
+                        } else {
+                            if validate(self.pow.clone(), pow_prob, &sol) {
+                                solved_nonce.insert(sol.nonce);
+                                info!(
+                                    "Stratum worker {} mined a block!",
+                                    payload.worker_id
+                                );
+                                found = true;
+                            }else {
+                                return Err(StratumServiceError::InvalidSolution(
+                                    format!(
+                                        "Incorrect Nonce! worker_id = {}!",
+                                        payload.worker_id
+                                    )
+                                    .into(),
+                                ));
+                            }
+                        }
                     }
                 }
             }
