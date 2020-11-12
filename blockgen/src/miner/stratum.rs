@@ -76,7 +76,7 @@ impl SubmitPayload {
 
         let worker_id = payload[0].clone();
 
-        let  mut  boundary:U256 = U256::zero()
+        let  mut  boundary:U256 = U256::zero();
         if !payload[1].eq(&payload[3]) {
             boundary = match clean_0x(&payload[1]).parse::<U256>() {
                 Ok(nonce) => nonce,
@@ -167,7 +167,7 @@ impl JobDispatcher for StratumJobDispatcher {
                         ));
                     } else {
                         if !payload.boundary.is_zero() {
-                            let ret =   validate2(self.pow.clone(), pow_prob, &sol,&payload.boundary)
+                            let ret =   validate2(self.pow.clone(), pow_prob, &sol,&payload.boundary);
                             match ret {
                                 1 => {
                                     solved_nonce.insert(sol.nonce);
